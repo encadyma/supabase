@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: hello-world
+  name: hello-world-deploy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hello-world
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: hello-world
+    spec:
+      containers:
+      - name: hello-world-deploy
+        image: "docker.ocf.berkeley.edu/hello-world:<%= version %>"
+        imagePullPolicy: Always
+        ports:
+          - name: http
+            containerPort: 80
+        volumeMounts:
+          - mountPath: "/hello-world/config/"
+            name: hello-world-secrets
+            readOnly: true
+	  - mountPath: "/hello-world/data/"
+            name: hello-world-data
+        env:
+        - name: TZ
+          value: America/Los_Angeles
+      restartPolicy: Always
+      volumes:
+        - name: hello-world-secrets
+          hostPath:
+            path: /opt/share/kubernetes/secrets/hello-world
+            type: Directory
+        - name: hello-world-data
+          persistentVolumeClaim:
+            claimName: hello-world-vol
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: hello-world
+  name: hello-world-service
+spec:
+  type: ClusterIP
+  ports:
+    - name: hello-world-port
+      port: 80
+      protocol: TCP
+      targetPort: 80
+  selector:
+    app: hello-world
+---
+apiVersion: apps/v1
+kind: Ingress
+metadata:
+  labels:
+    app: hello-world
+  name: virtual-host-ingress
+spec:
+  rules:
+    - host: hello-world.dev-kubernetes.ocf.berkeley.edu
+      http:
+        paths:
+          - backend:
+              serviceName: hello-world-service
+              servicePort: 80
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: hello-world-vol
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: managed-nfs-storage
