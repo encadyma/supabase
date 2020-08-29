@@ -2,85 +2,95 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app: hello-world
-  name: hello-world-deploy
+    app: supabase
+  name: supabase-deploy
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: hello-world
+      app: supabase
   strategy:
     type: Recreate
   template:
     metadata:
       labels:
-        app: hello-world
+        app: supabase
     spec:
       containers:
-      - name: hello-world-deploy
-        image: "docker.ocf.berkeley.edu/hello-world:<%= version %>"
+      - name: supabase-deploy
+        image: "docker.ocf.berkeley.edu/supabase-aio:<%= version %>"
         imagePullPolicy: Always
         ports:
           - name: http
-            containerPort: 80
-        volumeMounts:
-          - mountPath: "/hello-world/config/"
-            name: hello-world-secrets
-            readOnly: true
-	  - mountPath: "/hello-world/data/"
-            name: hello-world-data
+            containerPort: 8000
+#       volumeMounts:
+#         - mountPath: "/supabase/config/"
+#           name: supabase-secrets
+#           readOnly: true
+#         - mountPath: "/supabase/data/"
+#           name: supabase-data
         env:
-        - name: TZ
-          value: America/Los_Angeles
+        - name: DB_HOST
+          value: supabase-db-service.app-supabase.svc.cluster.local
+        - name: DB_NAME
+          value: postgres
+        - name: DB_USER
+          value: postgres
+        - name: DB_PASSWORD
+          value: postgres
+        - name: DB_PORT
+          value: 5432
+        - name: DB_SCHEMA
+          value: public
       restartPolicy: Always
-      volumes:
-        - name: hello-world-secrets
-          hostPath:
-            path: /opt/share/kubernetes/secrets/hello-world
-            type: Directory
-        - name: hello-world-data
-          persistentVolumeClaim:
-            claimName: hello-world-vol
+#     volumes:
+#       - name: supabase-secrets
+#         hostPath:
+#           path: /opt/share/kubernetes/secrets/supabase
+#           type: Directory
+#       - name: supabase-data
+#         persistentVolumeClaim:
+#           claimName: supabase-vol
 ---
 apiVersion: v1
 kind: Service
 metadata:
   labels:
-    app: hello-world
-  name: hello-world-service
+    app: supabase
+  name: supabase-service
 spec:
   type: ClusterIP
   ports:
-    - name: hello-world-port
+    - name: supabase-port
       port: 80
       protocol: TCP
-      targetPort: 80
+      targetPort: 8000
   selector:
-    app: hello-world
+    app: supabase
 ---
 apiVersion: apps/v1
 kind: Ingress
 metadata:
   labels:
-    app: hello-world
+    app: supabase
   name: virtual-host-ingress
 spec:
   rules:
-    - host: hello-world.dev-kubernetes.ocf.berkeley.edu
+    - host: supabase.dev-kubernetes.ocf.berkeley.edu
       http:
         paths:
           - backend:
-              serviceName: hello-world-service
+              serviceName: supabase-service
               servicePort: 80
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: hello-world-vol
-spec:
-  accessModes:
-  - ReadWriteMany
-  resources:
-    requests:
-      storage: 20Gi
-  storageClassName: managed-nfs-storage
+#---
+#apiVersion: v1
+#kind: PersistentVolumeClaim
+#metadata:
+#  name: supabase-vol
+#spec:
+#  accessModes:
+#  - ReadWriteMany
+#  resources:
+#    requests:
+#      storage: 20Gi
+#  storageClassName: managed-nfs-storage

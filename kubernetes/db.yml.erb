@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: supabase-db
+  name: supabase-db-deploy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: supabase-db
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: supabase-db
+    spec:
+      containers:
+      - name: supabase-db-deploy
+        image: "docker.ocf.berkeley.edu/supabase-postgres:<%= version %>"
+        imagePullPolicy: Always
+        ports:
+          - name: http
+            containerPort: 5432
+       volumeMounts:
+         - mountPath: "/var/lib/postgresql/data/"
+           name: supabase-db-data
+        env:
+        - name: DB_PASSWORD
+          value: postgres
+     restartPolicy: Always
+     volumes:
+       - name: supabase-db-data
+         persistentVolumeClaim:
+           claimName: supabase-db-vol
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: supabase-db
+  name: supabase-db-service
+spec:
+  type: ClusterIP
+  ports:
+    - name: supabase-db-port
+      port: 5432
+      protocol: TCP
+      targetPort: 5432
+  selector:
+    app: supabase-db
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: supabase-db-vol
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: managed-nfs-storage
